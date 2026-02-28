@@ -1,34 +1,26 @@
-import subprocess
 import os
 from dotenv import load_dotenv
+from pgai import Worker
 import sys
 import asyncio
+
+import psycopg
 
 load_dotenv()
 DB_URL = os.getenv('DB_URL')
 
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+async def create_vectorizer(conn: psycopg.AsyncConnection):
+    async with conn.cursor() as cur:    
+        await cur.execute("""
+            SELECT ai.create_vectorizer(
+                'wiki'::regclass,
+                if_not_exists => true,
+                loading => ai.loading_column(column_name=>'text'),
+                embedding => ai.embedding_openai(model=>'text-embedding-ada-002', dimensions=>'1536'),
+                destination => ai.destination_table(view_name=>'wiki_embedding')
+            )
+        """)   
+    await conn.commit()
 
-if not DB_URL:
-    print("Error: DB_URL environment variable not set")
-    sys.exit(1)
-
-print(f"Starting pgai vectorizer worker...")
-print(f"Database: {DB_URL}")
-print("Processing embeddings from queue...")
-print("Press Ctrl+C to stop\n")
-
-try:
-    # Run the pgai vectorizer worker CLI command
-    subprocess.run(
-        ["pgai", "vectorizer", "worker", "-d", DB_URL],
-        check=False
-    )
-except KeyboardInterrupt:
-    print("\nVectorizer worker stopped")
-    sys.exit(0)
-except FileNotFoundError:
-    print("Error: pgai command not found")
-    print("Make sure pgai is installed: pip install pgai")
-    sys.exit(1)
+worker = Worker(db_url=DB_URL)
+task = asyncio.create_task(worker.run())
