@@ -1,6 +1,7 @@
 {
   "name": "alsana",
   "version": "1.0.0",
+  "type": "module",
   "description": "Alsana Marketing Agent Server",
   "homepage": "https://github.com/yasim-doner/alsana_backend#readme",
   "bugs": {
@@ -12,9 +13,20 @@
   },
   "license": "ISC",
   "author": "",
-  "type": "commonjs",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1",
+    "nodemon": "^3.1.14",
+    "pg": "^8.19.0",
+    "xss": "^1.0.15"
   }
 }
