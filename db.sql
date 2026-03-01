@@ -1,10 +1,13 @@
+CREATE EXTENSION IF NOT EXISTS ai CASCADE;
+
+
 DROP TABLE IF EXISTS computer_brands CASCADE;
 
 CREATE TABLE IF NOT EXISTS computer_brands (
   id bigserial PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   description TEXT,
-  embedding vector(1536) -- Assuming the embedding dimension is 1536 for text-embedding-ada-002
+  embedding vector(3072)
 );
 
 INSERT INTO computer_brands (name, description) VALUES
@@ -19,7 +22,24 @@ INSERT INTO computer_brands (name, description) VALUES
 ('Microsoft Surface', 'Microsoft''s line of 2-in-1 laptops and tablets combining portability with power'),
 ('Alienware', 'Dell''s gaming-focused sub-brand creating high-end gaming computers and laptops');
 
+-- Insert embeddings using Gemini API via LiteLLM
+UPDATE computer_brands SET embedding =
+  ai.litellm_embed(
+    model := 'gemini/gemini-embedding-001',
+    input_text := description,
+    api_key := 'AIzaSyD3V6kx2hDQ6PrORNsEW_6ZllXXyPTRhN4'
+  );
 
-SELECT * FROM computer_brands;
+SELECT
+    name,
+    description,
+    embedding <=> ai.litellm_embed(
+        model := 'gemini/gemini-embedding-001',
+        input_text := 'Office Laptops',
+        api_key := 'AIzaSyD3V6kx2hDQ6PrORNsEW_6ZllXXyPTRhN4'
+    ) as distance
+FROM computer_brands
+ORDER BY distance ASC
+LIMIT 3;
 
-UPDATE computer_brands SET embedding = ai.embedding_openai(description, 1, "text-embedding-3-small")::vector;
+Select * from computer_brands;

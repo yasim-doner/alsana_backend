@@ -3,12 +3,12 @@
         {
             "ssh": "Disabled",
             "previewLimit": 50,
-            "server": "localhost",
+            "server": "78.135.85.242",
             "port": 5432,
             "driver": "PostgreSQL",
-            "name": "LocalAlsana",
-            "database": "alsana",
-            "username": "myazou"
+            "name": "AlsanaDB",
+            "database": "alsanadb",
+            "username": "postgres"
         }
     ]
 }
