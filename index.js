@@ -2,9 +2,11 @@ import express from "express";
 import "dotenv/config.js";
 import helmet from "helmet";
 import cors from "cors";
+import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import { filterXSS } from "xss";
 import { searchProducts } from "./db/db.js";
+import { log } from "./utils/logger.js";
 
 const PORT = process.env.PORT;
 const app = express();
@@ -14,10 +16,22 @@ const app = express();
 // 1) Helmet: XSS, clickjacking, MIME-sniffing gibi saldırılara karşı HTTP başlıkları ayarlar
 app.use(helmet());
 
+// 2) Morgan: HTTP istek loglaması
+app.use(
+  morgan(":method :url :status :response-time ms", {
+    stream: { write: (msg) => log.info(`HTTP ${msg.trim()}`) },
+  }),
+);
+
 // 2) CORS: Frontend'den gelen isteklere izin ver
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://alsana.site",
+      "http://alsana.site",
+    ],
     methods: ["GET", "POST"],
   }),
 );
@@ -49,11 +63,15 @@ app.get("/search", async (req, res) => {
 
   // Boş kontrol
   if (!rawSearchTerm) {
+    log.warn("Boş arama terimi ile istek geldi");
     return res.status(400).json({ error: "Search term is required" });
   }
 
   // Uzunluk sınırı (aşırı uzun girdileri reddet)
   if (rawSearchTerm.length > 500) {
+    log.warn(
+      `Çok uzun arama terimi reddedildi (${rawSearchTerm.length} karakter)`,
+    );
     return res
       .status(400)
       .json({ error: "Search term is too long (max 500 characters)" });
@@ -61,12 +79,18 @@ app.get("/search", async (req, res) => {
 
   // XSS temizleme: <script>, onerror= gibi zararlı HTML/JS kodlarını temizler
   const searchTerm = filterXSS(rawSearchTerm.trim());
+  log.info(`Arama başlatıldı: "${searchTerm}"`);
 
   try {
+    const startTime = Date.now();
     const products = await searchProducts(searchTerm);
+    const duration = Date.now() - startTime;
+    log.info(
+      `Arama tamamlandı: "${searchTerm}" → ${products?.length || 0} sonuç (${duration}ms)`,
+    );
     res.json(products);
   } catch (error) {
-    console.error("Search error:", error.message);
+    log.error(`Arama hatası: "${searchTerm}"`, error);
     res
       .status(500)
       .json({ error: "An error occurred while searching for products" });
@@ -74,5 +98,5 @@ app.get("/search", async (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running on port ${PORT}`);
+  log.info(`Server başlatıldı → http://localhost:${PORT}`);
 });

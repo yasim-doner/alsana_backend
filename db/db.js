@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import "dotenv/config";
+import { log } from "../utils/logger.js";
 
 // Veritabanı bağlantı ayarları
 const pool = new Pool({
@@ -9,6 +10,10 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
 });
+
+// DB bağlantı durumunu logla
+pool.on("connect", () => log.info("DB bağlantısı kuruldu"));
+pool.on("error", (err) => log.error("DB bağlantı hatası", err));
 
 /**
  * AI Destekli Ürün Arama Fonksiyonu
@@ -32,10 +37,11 @@ async function searchProducts(searchTerm) {
 
   try {
     const res = await pool.query(query, values);
-    console.log("Arama Sonuçları:");
-    return res.rows; // Gelen veriler burada
+    log.info(`DB sorgusu başarılı: ${res.rows.length} satır döndü`);
+    return res.rows;
   } catch (err) {
-    console.error("Sorgu hatası:", err.stack);
+    log.error("DB sorgu hatası", err);
+    throw err;
   }
 }
 
