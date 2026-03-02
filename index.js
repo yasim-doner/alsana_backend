@@ -46,7 +46,6 @@ const limiter = rateLimit({
     error: "Çok fazla istek gönderdiniz. Lütfen daha sonra tekrar deneyin.",
   },
 });
-app.use(limiter);
 
 // 3) JSON body parse (ileride POST istekleri için)
 app.use(express.json({ limit: "10kb" })); // Body boyutunu sınırla
