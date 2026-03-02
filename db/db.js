@@ -20,16 +20,19 @@ pool.on("error", (err) => log.error("DB bağlantı hatası", err));
  */
 async function searchProducts(searchTerm) {
   const query = `
-    SELECT 
-      name, 
-      description, 
-      embedding <=> ai.litellm_embed(
-        model := 'gemini/gemini-embedding-001', 
-        input_text := $1, 
+    SELECT
+    product_name,
+    price,
+    url,
+    embedding <=> ai.litellm_embed(
+        model := 'gemini/gemini-embedding-001',
+        input_text := $1,
         api_key := $2
-      ) as distance
-    FROM computer_brands
-    ORDER BY distance ASC
+    ) as distance
+FROM computers
+ORDER BY distance ASC
+LIMIT 5;
+
   `;
 
   // SQL Injection'dan korunmak için parametreleri ($1, $2) dışarıdan veriyoruz
