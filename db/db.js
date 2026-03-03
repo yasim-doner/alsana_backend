@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import "dotenv/config";
+import crypto from "crypto";
 import { log } from "../utils/logger.js";
 
 // Veritabanı bağlantı ayarları
@@ -22,8 +23,12 @@ const VALID_GPU_TYPES = ["NVIDIA", "AMD"];
 /**
  * AI Destekli Ürün Arama Fonksiyonu (Filtre destekli)
  */
-async function searchProducts(searchTerm, filters = {}) {
-  const values = [searchTerm, process.env.GEMINI_API_KEY];
+async function searchProducts(sessionId, searchTerm, filters = {}) {
+  if (!sessionId) {
+    sessionId = generateSessionId();
+  }
+
+  const values = [sessionId, searchTerm];
   const conditions = [];
   let paramIndex = 3;
 
@@ -63,19 +68,9 @@ async function searchProducts(searchTerm, filters = {}) {
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const query = `
-    SELECT
-      product_name,
-      price,
-      url,
-      embedding <=> ai.litellm_embed(
-          model := 'gemini/gemini-embedding-001',
-          input_text := $1,
-          api_key := $2
-      ) as distance
-    FROM computers
-    ${whereClause}
-    ORDER BY distance ASC
-    LIMIT 5;
+    SELECT *
+    FROM search_computers($1, $2, 5)
+    ${whereClause};
   `;
 
   // SQL Injection'dan korunmak için parametreleri ($1, $2, ...) dışarıdan veriyoruz
@@ -91,25 +86,7 @@ async function searchProducts(searchTerm, filters = {}) {
   }
 }
 
-/**
- * RAG: İlk sohbet başlatma — generate_rag_response PL/pgSQL fonksiyonunu çağırır
- */
-async function generateRagResponse(sessionId, queryText) {
-  const query = `SELECT generate_rag_response($1, $2) AS response;`;
-  const values = [sessionId, queryText];
 
-  try {
-    const res = await pool.query(query, values);
-    const response = res.rows[0]?.response || "";
-    log.info(
-      `RAG yanıtı üretildi: session=${sessionId}, uzunluk=${response.length}`,
-    );
-    return response;
-  } catch (err) {
-    log.error("RAG generate hatası", err);
-    throw err;
-  }
-}
 
 /**
  * RAG: Takip sorusu — chat_with_context PL/pgSQL fonksiyonunu çağırır
@@ -131,4 +108,8 @@ async function chatWithContext(sessionId, followUpQuery) {
   }
 }
 
-export { searchProducts, generateRagResponse, chatWithContext };
+function generateSessionId() {
+  return crypto.randomUUID();
+}
+
+export { searchProducts, chatWithContext, generateSessionId };

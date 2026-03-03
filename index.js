@@ -8,7 +8,6 @@ import rateLimit from "express-rate-limit";
 import { filterXSS } from "xss";
 import {
   searchProducts,
-  generateRagResponse,
   chatWithContext,
 } from "./db/db.js";
 import { log } from "./utils/logger.js";
@@ -144,7 +143,7 @@ app.post("/chat/start", async (req, res) => {
 
   try {
     const startTime = Date.now();
-    const response = await generateRagResponse(sessionId, query);
+    const response = await chatWithContext(sessionId, query);
     const duration = Date.now() - startTime;
     log.info(`Chat başlatıldı: session=${sessionId} (${duration}ms)`);
     res.json({ sessionId, response });
