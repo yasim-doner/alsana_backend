@@ -96,14 +96,16 @@ app.get("/search", async (req, res) => {
     `Arama başlatıldı: "${searchTerm}" | Filtreler: ${JSON.stringify(filters)}`,
   );
 
+  const sessionId = req.query.sessionId || crypto.randomUUID();
+
   try {
     const startTime = Date.now();
-    const products = await searchProducts(searchTerm, filters);
+    const products = await searchProducts(sessionId, searchTerm, filters);
     const duration = Date.now() - startTime;
     log.info(
       `Arama tamamlandı: "${searchTerm}" → ${products?.length || 0} sonuç (${duration}ms)`,
     );
-    res.json(products);
+    res.json({ sessionId, products });
   } catch (error) {
     log.error(`Arama hatası: "${searchTerm}"`, error);
     res
@@ -143,6 +145,10 @@ app.post("/chat/start", async (req, res) => {
 
   try {
     const startTime = Date.now();
+    // Context oluşması için önce veritabanında arama işlemini tetikliyoruz, çünkü chatWithContext'in içeriğe ihtiyacı var!
+    await searchProducts(sessionId, query);
+
+    // Artık context mevcut olduğuna göre, chatWithContext null dönmez.
     const response = await chatWithContext(sessionId, query);
     const duration = Date.now() - startTime;
     log.info(`Chat başlatıldı: session=${sessionId} (${duration}ms)`);
